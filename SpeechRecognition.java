@@ -12,6 +12,8 @@ public class SpeechRecognition {
 	int windowNum;
 	int startWordWindow;
 	int endWordWindow;
+	
+	private static SpeechRecognition instance = null;
 
 	final static int endpointWindowSize = 15; 		// Milliseconds
 	final static int slidingWindowNum = 18;
@@ -19,25 +21,14 @@ public class SpeechRecognition {
 	final static int maxOnesNum = 8;
 	final static int maxZCT = 25; 		// Maximum Zero-Crossing Threshold
 	
-	public SpeechRecognition() {
-		try {
-			wavFile = WavFile.openWavFile(new File("automobil.wav"));
-			samplesNumber = (int)wavFile.getFramesRemaining();
-			samples = new double[samplesNumber];
-			wavFile.readFrames(samples, samplesNumber);
-			samplesAbsolute = new double[samplesNumber];
-			for (int i=0; i<samplesNumber; i++) {
-				samplesAbsolute[i] = Math.abs(samples[i]);
-			}
-			
-			noiseLevel = findNoiseLevel();
-			System.out.println("noise: " + noiseLevel);
-			
-			speaking = endpoint();
-			
-		} catch (IOException | WavFileException e) {
-			e.printStackTrace();
+	public static SpeechRecognition getInstance() {
+		if (instance == null) {
+			instance = new SpeechRecognition();
 		}
+		return instance;
+	}
+	
+	private SpeechRecognition() {
 	}
 	
 	private double findNoiseLevel() {
@@ -75,7 +66,7 @@ public class SpeechRecognition {
 			double avg = sum / samplesPerWindow;
 			if (avg > noiseLevel) {
 				talk[win] = true;
-				System.out.println("..." + win);
+				//System.out.println("..." + win);
 			} else {
 				talk[win] = false;
 			}
@@ -95,7 +86,7 @@ public class SpeechRecognition {
 	        }
 	    }
 	    
-	    System.out.println(startWordWindow + "__" + endWordWindow);
+	    //System.out.println(startWordWindow + "__" + endWordWindow);
 	    
 	    zcr(talk);
 	
@@ -103,7 +94,7 @@ public class SpeechRecognition {
 	}
 	
 	private void smoothUp(boolean talk[]) {
-		System.out.println(slidingWindowNum + "/" + maxOnesNum);
+		//System.out.println(slidingWindowNum + "/" + maxOnesNum);
 		
 		for (int swin=0; swin < windowNum - slidingWindowNum + 1; swin++) {
 			if (!talk[swin] || !talk[swin + slidingWindowNum - 1]) continue;
@@ -120,15 +111,15 @@ public class SpeechRecognition {
 				for (int win=swin; win < swin + slidingWindowNum; win++) {
 					talk[win] = true;
 				}
-				System.out.println(swin + "~~~~");
+				//System.out.println(swin + "~~~~");
 		    }	
 
-			System.out.println(swin + ": " + zeroNum);
+			//System.out.println(swin + ": " + zeroNum);
 		}
 
 		for (int i=0; i<windowNum; i++) {
 			if (talk[i]) {
-				System.out.println("++ " + i);
+				//System.out.println("++ " + i);
 			}
 		}
 	}	
@@ -155,7 +146,7 @@ public class SpeechRecognition {
 	
 	private void zcr(boolean[] talk) {
 		double ZCT = calcZCT();
-		System.out.println("zct: " + ZCT);
+		//System.out.println("zct: " + ZCT);
 		
 	    int zcrWindowNumber = 250 / endpointWindowSize;
 	    int newStartWordWindow = startWordWindow;
@@ -197,7 +188,7 @@ public class SpeechRecognition {
 	    }
 
 	    endWordWindow = newEndWordWindow;
-	    System.out.println(startWordWindow + "___" + endWordWindow);
+	    //System.out.println(startWordWindow + "___" + endWordWindow);
 
 	}
 	
@@ -233,9 +224,49 @@ public class SpeechRecognition {
 	    return ZCT;
 	}
 
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-		new SpeechRecognition();
+	public void processWav(WavFile wavFile, String word, boolean train) {
+		try {
+			this.wavFile = wavFile;
+			wavFile.display();
+			
+			samplesNumber = (int)wavFile.getFramesRemaining();
+			samples = new double[samplesNumber];
+			wavFile.readFrames(samples, samplesNumber);
+			samplesAbsolute = new double[samplesNumber];
+			for (int i=0; i<samplesNumber; i++) {
+				samplesAbsolute[i] = Math.abs(samples[i]);
+			}
+			
+			noiseLevel = findNoiseLevel();
+			
+			speaking = endpoint();
+			
+//			for (int win=0; win<windowNum; win++) {
+//				for (int s=win*samplesPerWindow; s<(win+1)*samplesPerWindow; s++) {
+//					samples[s] = hanning(s - win*samplesPerWindow, samplesPerWindow) * samples[s];
+//				}
+//			}
+			
+			CoefVector[] vectors = new CoefVector[endWordWindow - startWordWindow + 1];
+			
+			for (int win=startWordWindow; win<=endWordWindow; win++) {
+				vectors[win - startWordWindow] = new CoefVector(LPC.calcCoefficientVector(samples, win * samplesPerWindow - 1, samplesPerWindow));
+			}
+			
+			LpcTemplate template = new LpcTemplate(word, endWordWindow - startWordWindow + 1, vectors);
+			if (train) {
+				LpcTemplate.templateList.add(template);
+			}
+			else {
+				LpcTemplate.sampleList.add(template);
+			}
+		} catch (IOException | WavFileException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private double hanning(double x, int n) {
+	    return 0.5 * (1 - Math.cos((2 * Math.PI * x) / (n - 1)));
 	}
 
 }
