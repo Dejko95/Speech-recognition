@@ -27,10 +27,15 @@ public class Window extends JFrame {
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				JFileChooser chooser = new JFileChooser("src/dataset/train");
-				chooser.showOpenDialog(null);
-				File file = chooser.getSelectedFile();
-				ReadWav.readFile(file, true);
+				//JFileChooser chooser = new JFileChooser("src/dataset/train44kHz");
+				//chooser.showOpenDialog(null);
+				//File file = chooser.getSelectedFile();
+				//ReadWav.readFile(file, true);
+				ReadWav.readFromFolder("src/dataset/train44kHz", true);
+				for (LpcTemplate template : LpcTemplate.templateList) {
+					System.out.println(template.word + ": " + template.vectors.length + " " + template.framesNumber);
+				}
+				System.out.println();
 			}
 		});
 		
@@ -42,16 +47,19 @@ public class Window extends JFrame {
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				JFileChooser chooser = new JFileChooser("src/dataset/test");
+
+				JFileChooser chooser = new JFileChooser("src/dataset/test44kHz");
 				chooser.showOpenDialog(null);
 				File file = chooser.getSelectedFile();
 				ReadWav.readFile(file, false);
 				
-				System.out.println("templates: " + LpcTemplate.templateList.size());
-				System.out.println("samples: " + LpcTemplate.sampleList.size());
-				
-				for (LpcTemplate sample : LpcTemplate.sampleList) {
+				//System.out.println("templates: " + LpcTemplate.templateList.size());
+				//System.out.println("samples: " + LpcTemplate.sampleList.size());
+				int correct = 0;
+				//for (LpcTemplate sample : LpcTemplate.sampleList) {
+				LpcTemplate sample = LpcTemplate.sampleList.get(LpcTemplate.sampleList.size()-1);
 					System.out.println("-------------- " + sample.word + " ---------------");
+					System.out.println("length: " + sample.vectors.length);
 					double minDiff = Double.MAX_VALUE;
 					String guess = "?";
 					for (LpcTemplate template : LpcTemplate.templateList) {
@@ -63,8 +71,52 @@ public class Window extends JFrame {
 						}
 					}
 					System.out.println(sample.word + ": " + guess);
-				}
+				//}
+				
 			}
 		});
+		
+		
+		
+		
+		JButton guessAll = new JButton("Guess all");
+		guessAll.setBounds(50, 250, 100, 30);
+		pnl.add(guessAll);
+		
+		guessAll.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+
+				ReadWav.readFromFolder("src/dataset/test44kHz", false);
+				
+				//System.out.println("templates: " + LpcTemplate.templateList.size());
+				//System.out.println("samples: " + LpcTemplate.sampleList.size());
+				int correct = 0;
+				for (LpcTemplate sample : LpcTemplate.sampleList) {
+				//LpcTemplate sample = LpcTemplate.sampleList.get(LpcTemplate.sampleList.size()-1);
+					System.out.println("-------------- " + sample.word + " ---------------");
+					System.out.println("length: " + sample.vectors.length);
+					double minDiff = Double.MAX_VALUE;
+					String guess = "?";
+					for (LpcTemplate template : LpcTemplate.templateList) {
+						double diff = DTW.difference(template.vectors, sample.vectors);
+						System.out.printf("%s %.6f\n", template.word, diff);
+						if (diff < minDiff) {
+							minDiff = diff;
+							guess = template.word;
+						}
+					}
+					System.out.println(sample.word + ": " + guess);
+					if (sample.word.startsWith(guess)) {
+						correct++;
+					}
+				}
+				System.out.println("Score: " + correct + "/" + LpcTemplate.templateList.size() + "  Acc: " + (double)correct/LpcTemplate.templateList.size() + "%");
+			}
+		});
+		
+		
+		
 	}
 }

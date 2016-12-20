@@ -79,17 +79,22 @@ public class SpeechRecognition {
 
 	    for (int win=0; win<windowNum; win++) {
 	        if (talk[win]) {
+	        	//System.out.println(win + ": " + 1);
 	            if (startWordWindow == -1) {
 	                startWordWindow = win;
 	            }
 	            endWordWindow = win;
 	        }
+	        //else 
+	        //	System.out.println(win + ": " + 0);
 	    }
 	    
-	    //System.out.println(startWordWindow + "__" + endWordWindow);
+	    System.out.println(startWordWindow + "__" + endWordWindow);
 	    
 	    zcr(talk);
-	
+
+	    //System.out.println(startWordWindow + "__" + endWordWindow);
+	    
 		return talk;
 	}
 	
@@ -131,7 +136,7 @@ public class SpeechRecognition {
 			int onesNum = 0;
 			
 			for (int win=swin; win < swin + slidingWindowNum; win++) {
-				if (!talk[win]) {
+				if (talk[win]) {
 					onesNum++;
 				}
 			}
@@ -227,7 +232,7 @@ public class SpeechRecognition {
 	public void processWav(WavFile wavFile, String word, boolean train) {
 		try {
 			this.wavFile = wavFile;
-			wavFile.display();
+			//wavFile.display();
 			
 			samplesNumber = (int)wavFile.getFramesRemaining();
 			samples = new double[samplesNumber];
@@ -239,20 +244,23 @@ public class SpeechRecognition {
 			
 			noiseLevel = findNoiseLevel();
 			
+			word = word.substring(0, word.indexOf('.'));
+			
+			System.out.println(word + ":");
 			speaking = endpoint();
 			
-//			for (int win=0; win<windowNum; win++) {
-//				for (int s=win*samplesPerWindow; s<(win+1)*samplesPerWindow; s++) {
-//					samples[s] = hanning(s - win*samplesPerWindow, samplesPerWindow) * samples[s];
-//				}
-//			}
+			for (int win=0; win<windowNum; win++) {
+				for (int s=win*samplesPerWindow; s<(win+1)*samplesPerWindow; s++) {
+					samples[s] = hamming(s - win*samplesPerWindow, samplesPerWindow) * samples[s];
+				}
+			}
 			
 			CoefVector[] vectors = new CoefVector[endWordWindow - startWordWindow + 1];
 			
 			for (int win=startWordWindow; win<=endWordWindow; win++) {
-				vectors[win - startWordWindow] = new CoefVector(LPC.calcCoefficientVector(samples, win * samplesPerWindow - 1, samplesPerWindow));
+				vectors[win - startWordWindow] = new CoefVector(LPC.calcCoefficientVector(samples, win * samplesPerWindow, samplesPerWindow));
 			}
-			
+		    //System.out.println(startWordWindow + "__" + endWordWindow);
 			LpcTemplate template = new LpcTemplate(word, endWordWindow - startWordWindow + 1, vectors);
 			if (train) {
 				LpcTemplate.templateList.add(template);
@@ -267,6 +275,10 @@ public class SpeechRecognition {
 	
 	private double hanning(double x, int n) {
 	    return 0.5 * (1 - Math.cos((2 * Math.PI * x) / (n - 1)));
+	}
+	
+	private double hamming(double x, int n) {
+	    return 0.54 - 0.46 * Math.cos((2 * Math.PI * x) / (n - 1));
 	}
 
 }

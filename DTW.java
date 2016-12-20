@@ -13,7 +13,7 @@ public class DTW {
 		d = new double[temp.length][samp.length];
 		for (int i=0; i<temp.length; i++) {
 			for (int j=0; j<samp.length; j++) {
-				d[i][j] = -1;
+				d[i][j] = 999999;
 			}
 		}
 		d[0][0] = temp[0].distanceFrom(samp[0]);
@@ -27,6 +27,7 @@ public class DTW {
 		
 		for (int i=2; i<temp.length; i++) {
 			int start = (i+1) / 2;
+			if (start >= samp.length) break;
 			if (i % 2 == 0) {
 				d[i][start] = temp[i].distanceFrom(samp[start]) + d[i-2][start-1];
 			}

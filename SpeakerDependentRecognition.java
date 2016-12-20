@@ -17,5 +17,6 @@ public class SpeakerDependentRecognition {
 				new Window();
 			}
 		});
+		
 	};
 }
